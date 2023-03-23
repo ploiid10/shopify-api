@@ -1,6 +1,6 @@
 {
   "name": "@ploiid10/shopify-api",
-  "version": "6.3.2",
+  "version": "6.3.3",
   "description": "Shopify API Library for Node - accelerate development with support for authentication, graphql proxy, webhooks",
   "main": "./lib/index.js",
   "types": "./lib/index.d.ts",
