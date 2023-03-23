@@ -1,3 +1,5 @@
+import crypto from 'crypto';
+
 import {v4 as uuidv4} from 'uuid';
 
 import ProcessedQuery from '../../utils/processed-query';
@@ -13,17 +15,12 @@ import {
   abstractConvertRequest,
   abstractConvertIncomingResponse,
   abstractConvertResponse,
-  abstractConvertHeaders,
   AdapterResponse,
   AdapterHeaders,
-  Cookies,
-  NormalizedResponse,
 } from '../../../runtime/http';
 import {logger} from '../../logger';
 
 import {
-  SESSION_COOKIE_NAME,
-  STATE_COOKIE_NAME,
   BeginParams,
   CallbackParams,
   AuthQuery,
@@ -31,7 +28,6 @@ import {
   OnlineAccessResponse,
   OnlineAccessInfo,
 } from './types';
-import {nonce} from './nonce';
 import {safeCompare} from './safe-compare';
 
 export interface CallbackResponse<T = AdapterHeaders> {
@@ -55,22 +51,15 @@ export function begin(config: ConfigInterface) {
     log.info('Beginning OAuth', {shop, isOnline, callbackPath});
 
     const cleanShop = sanitizeShop(config)(shop, true)!;
-    const request = await abstractConvertRequest(adapterArgs);
     const response = await abstractConvertIncomingResponse(adapterArgs);
 
-    const cookies = new Cookies(request, response, {
-      keys: [config.apiSecretKey],
-      secure: true,
-    });
-
-    const state = nonce();
-
-    await cookies.setAndSign(STATE_COOKIE_NAME, state, {
-      expires: new Date(Date.now() + 60000),
-      sameSite: 'lax',
-      secure: true,
-      path: callbackPath,
-    });
+    const apiKey = config.apiSecretKey;
+    const hashkey = isOnline
+      ? `online_${apiKey}_24214wfsf2c12`
+      : `offline_${apiKey}_24214wfsf2c12`;
+    const hash = crypto.createHash('sha256');
+    const hashedShop = hash.update(cleanShop + hashkey).digest('hex');
+    const state = isOnline ? `online_${hashedShop}` : `offline_${hashedShop}`;
 
     const query = {
       client_id: config.apiKey,
@@ -87,7 +76,6 @@ export function begin(config: ConfigInterface) {
     response.statusText = 'Found';
     response.headers = {
       ...response.headers,
-      ...cookies.response.headers!,
       Location: redirectUrl,
     };
 
@@ -125,25 +113,22 @@ export function callback(config: ConfigInterface) {
     const shop = query.get('shop')!;
 
     log.info('Completing OAuth', {shop});
-
-    const cookies = new Cookies(request, {} as NormalizedResponse, {
-      keys: [config.apiSecretKey],
-      secure: true,
-    });
-
-    const stateFromCookie = await cookies.getAndVerify(STATE_COOKIE_NAME);
-    cookies.deleteCookie(STATE_COOKIE_NAME);
-    if (!stateFromCookie) {
-      log.error('Could not find OAuth cookie', {shop});
-
-      throw new ShopifyErrors.CookieNotFound(
-        `Cannot complete OAuth process. Could not find an OAuth cookie for shop url: ${shop}`,
-      );
-    }
-
+    const cleanShop = sanitizeShop(config)(query.get('shop')!, true)!;
     const authQuery: AuthQuery = Object.fromEntries(query.entries());
-    if (!(await validQuery({config, query: authQuery, stateFromCookie}))) {
-      log.error('Invalid OAuth callback', {shop, stateFromCookie});
+
+    const isOnline = (authQuery as any).state.startsWith('online_');
+    const apiKey = config.apiKey;
+    const hashkey = isOnline
+      ? `online_${apiKey}_24214wfsf2c12`
+      : `offline_${apiKey}_24214wfsf2c12`;
+    const hash = crypto.createHash('sha256');
+    const hashedShop = hash.update(cleanShop + hashkey).digest('hex');
+    const state = isOnline ? `online_${hashedShop}` : `offline_${hashedShop}`;
+
+    if (
+      !(await validQuery({config, query: authQuery, stateFromCookie: state}))
+    ) {
+      log.error('Invalid OAuth callback', {shop, stateFromCookie: state});
 
       throw new ShopifyErrors.InvalidOAuthError('Invalid OAuth callback.');
     }
@@ -161,7 +146,6 @@ export function callback(config: ConfigInterface) {
       type: DataType.JSON,
       data: body,
     };
-    const cleanShop = sanitizeShop(config)(query.get('shop')!, true)!;
 
     const HttpClient = httpClientClass(config);
     const client = new HttpClient({domain: cleanShop});
@@ -170,24 +154,12 @@ export function callback(config: ConfigInterface) {
     const session: Session = createSession({
       postResponse,
       shop: cleanShop,
-      stateFromCookie,
+      stateFromCookie: state,
       config,
     });
 
-    if (!config.isEmbeddedApp) {
-      await cookies.setAndSign(SESSION_COOKIE_NAME, session.id, {
-        expires: session.expires,
-        sameSite: 'lax',
-        secure: true,
-        path: '/',
-      });
-    }
-
     return {
-      headers: (await abstractConvertHeaders(
-        cookies.response.headers!,
-        adapterArgs,
-      )) as T,
+      headers: {} as T,
       session,
     };
   };
