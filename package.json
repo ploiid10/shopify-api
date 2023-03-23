@@ -77,7 +77,6 @@
     "@shopify/network": "^1.5.1",
     "@types/node-fetch": "^2.5.7",
     "@types/supertest": "^2.0.10",
-    "crypto": "^1.0.1",
     "jose": "^4.9.1",
     "node-fetch": "^2.6.1",
     "semver": "^7.3.8",
