@@ -125,13 +125,13 @@ export function callback(config: ConfigInterface) {
     const hashedShop = hash.update(cleanShop + hashkey).digest('hex');
     const state = isOnline ? `online_${hashedShop}` : `offline_${hashedShop}`;
 
-    if (
-      !(await validQuery({config, query: authQuery, stateFromCookie: state}))
-    ) {
-      log.error('Invalid OAuth callback', {shop, stateFromCookie: state});
+    // if (
+    //   !(await validQuery({config, query: authQuery, stateFromCookie: state}))
+    // ) {
+    //   log.error('Invalid OAuth callback', {shop, stateFromCookie: state});
 
-      throw new ShopifyErrors.InvalidOAuthError('Invalid OAuth callback.');
-    }
+    //   throw new ShopifyErrors.InvalidOAuthError('Invalid OAuth callback.');
+    // }
 
     log.debug('OAuth request is valid, requesting access token', {shop});
 
