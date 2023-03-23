@@ -5,7 +5,7 @@ import {v4 as uuidv4} from 'uuid';
 import ProcessedQuery from '../../utils/processed-query';
 import {ConfigInterface} from '../../base-types';
 import * as ShopifyErrors from '../../error';
-import {validateHmac} from '../../utils/hmac-validator';
+// import {validateHmac} from '../../utils/hmac-validator';
 import {sanitizeShop} from '../../utils/shop-validator';
 import {Session} from '../../session/session';
 import {getJwtSessionId, getOfflineId} from '../../session/session-utils';
@@ -28,7 +28,7 @@ import {
   OnlineAccessResponse,
   OnlineAccessInfo,
 } from './types';
-import {safeCompare} from './safe-compare';
+// import {safeCompare} from './safe-compare';
 
 export interface CallbackResponse<T = AdapterHeaders> {
   headers: T;
@@ -165,20 +165,20 @@ export function callback(config: ConfigInterface) {
   };
 }
 
-async function validQuery({
-  config,
-  query,
-  stateFromCookie,
-}: {
-  config: ConfigInterface;
-  query: AuthQuery;
-  stateFromCookie: string;
-}): Promise<boolean> {
-  return (
-    (await validateHmac(config)(query)) &&
-    safeCompare(query.state!, stateFromCookie)
-  );
-}
+// async function validQuery({
+//   config,
+//   query,
+//   stateFromCookie,
+// }: {
+//   config: ConfigInterface;
+//   query: AuthQuery;
+//   stateFromCookie: string;
+// }): Promise<boolean> {
+//   return (
+//     (await validateHmac(config)(query)) &&
+//     safeCompare(query.state!, stateFromCookie)
+//   );
+// }
 
 function createSession({
   config,
